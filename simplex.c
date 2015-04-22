@@ -4,8 +4,12 @@
 #include <stdlib.h>
 #include "cblas.h"
 #include "assert.h"
+#include "math.h"
 
 int foundOptimal = 0;
+
+
+//int getEnteringVariable(const double An,
 
 
 void printLine(int nFactor)
@@ -23,7 +27,7 @@ void printLine(int nFactor)
 // m : rows
 // n : cols
 // a :
-void printMatrix(int m, int n, double *a, double *b, double *c, double zt)
+void printMatrix(int m, int n, double *a, double *b, double *c, double zb)
 {
     int rowC = 0;
     int colC = 0;
@@ -52,7 +56,7 @@ void printMatrix(int m, int n, double *a, double *b, double *c, double zt)
         printf("%f", c[colC]);
         colC++;
     }
-    printf(" | %f", zt);
+    printf(" | %f", zb);
 
     printf("\n");
     //printf("---------------------------------------\n");
@@ -139,7 +143,7 @@ int getMinRow2(double a[], int nRows, int nCols, int startCol, double *b)
         endIdx = getIndex(nRows, nCols, nStartRow, nCols);
         if (a[arrIdx] > 0 && max < a[endIdx]/b[i])
         {
-            max = a[endIdx]/b[i];
+            max = a[endIdx]/b[i]);
             max_i = i;
         }
     }
@@ -167,6 +171,7 @@ int main (int argc, char *argv[])
    incy = 1;
    alpha = 1;
    beta = 0;
+   int IdentityMatrixOffSet = 2;
 
 
    a = (double *)malloc(sizeof(double)*m*n);
@@ -175,8 +180,7 @@ int main (int argc, char *argv[])
    c = (double *)malloc(sizeof(double)*n);
    b = (double *)malloc(sizeof(double)*m);
 
-   double zt = 0.0;
-
+   zb = 0.0;
    b[0] = 20;
    b[1] = 4;
    b[2] = 10;
@@ -217,9 +221,9 @@ int main (int argc, char *argv[])
    a[m*4+2] = 1;
    //a[m*4+3] = 8;
 
-   a[m*5] = 0;
+   /*a[m*5] = 0;
    a[m*5+1] = 0;
-   a[m*5+2] = 1;
+   a[m*5+2] = 1;*/
    //a[m*5+3] = 8;
 
    //a[m*6] = 0;
@@ -229,7 +233,7 @@ int main (int argc, char *argv[])
 
 
    printf("\nBefore:\n");
-   printMatrix(m, n, a, b, c, zt);
+   printMatrix(m, n, a, b, c, zb);
 
 
    int e = 1;
@@ -246,6 +250,7 @@ int main (int argc, char *argv[])
    }
    while (iter-- > 0 && foundOptimal == 0)
    {
+       printf("\nIteration = %d\n\n",iteration++);
        // Find entering variable
        e = getMaxCol2(c, 1, n, 1);   // e col index
 
@@ -266,6 +271,7 @@ int main (int argc, char *argv[])
 
        // t = min ratio of all rows in col e (which is l) from getMinRow
        double t = b[l] / a[getIndex(m,n, l, e)];
+       printf("t = %f\n", t);
 
        int temp = 0;
 
@@ -277,23 +283,30 @@ int main (int argc, char *argv[])
        }
        d[e-1] = a[getIndex(m,n,l,e)] - 1;
 
-       double *r = (double *)malloc(sizeof(double)*n);
-       for (temp = 0; temp < n; temp++)
+       double *r = (double *)malloc(sizeof(double)*(n-IdentityMatrixOffSet));
+       for (temp = IdentityMatrixOffSet; temp < n; temp++)
        {
-           r[temp] = a[getIndex(m, n, l, 1+temp)];
+           r[temp-IdentityMatrixOffSet] = a[getIndex(m, n, l, temp+1)];
        }
 
        // Xe <-- Xe + t
        c[e] += t;
+       printf("\nXe (c[e]) = %f\t", c[e]);
 
-       zb -= (t * c[e]);
+       //zb -= (t * c[e]);
+       //printf("Xb (zb) = %f\n", zb);
+       for (temp = IdentityMatrixOffSet; temp < n; temp++)
+       {
+           a[getIndex(m, n, m, temp+1)] -= (t * c[e]);
+       }
+
 
        alpha = 1.0/a[getIndex(m,n,l,e)];
 
        printf("\nd:\n");
        printArray(1, m, d);
        printf("\nr:\n");
-       printArray(1, n, r);
+       printArray(1, n-IdentityMatrixOffSet, r);
 
        printf("\nAlpha = %f\n", alpha);
 
@@ -310,8 +323,7 @@ int main (int argc, char *argv[])
        c[l] = c[e];
        c[e] = tempE;
 
-       printf("\nIteration = %d\n",iteration++);
-       printMatrix(m,n,a,b,c,zt);
+       printMatrix(m,n,a,b,c,zb);
    }
 
    if (foundOptimal == 1)
