@@ -9,7 +9,7 @@ int getIndex(int nRows, int nCols, int r, int c)
 }
 
 
-void printArray(int m, int n, double a[])
+void printArray(int m, int n, double a[], int transpose)
 {
     int rowC = 0;
     int colC = 0;
@@ -18,7 +18,14 @@ void printArray(int m, int n, double a[])
     {
         while(colC < n)
         {
-            printf (" a[%d,%d] = %f\t", rowC+1, colC+1, a[getIndex(m, n, rowC+1, colC+1)]);
+            if (transpose == 0)
+            {
+                printf (" a[%d,%d] = %f\t", rowC+1, colC+1, a[getIndex(m, n, rowC+1, colC+1)]);
+            }
+            else
+            {
+                printf (" a[%d,%d] = %f\n", rowC+1, colC+1, a[getIndex(m, n, rowC+1, colC+1)]);
+            }
             colC++;
         }
         printf("\n");
@@ -29,10 +36,14 @@ void printArray(int m, int n, double a[])
 
 void printMatrix(double *X, int m, int n);
 
+void printMatrix2(double *An, int m, int n, double *XB, double *Xb, double *c, double *cb, double t, int e, int l);
+
+void printLine(int nFactor);
+
 void copyRow(double *d, const double* An, int m, int n, int l);
-void copyColumn(double *r, const double* An, int m, int n, int e);
-void addToColumn(const double *An, int m, int n, int e, const double *t);
-void addToColumn2(const double *An, int m, int n, int e, const double* t, double *XB, int *Xb);
+void copyColumn(double *r, const double* An, int m, int n, int e, double a);
+void addToColumn(double *An, int m, int n, int e, const double *t);
+void subtractFromColumn(double *An, int m, int n, int e, const double* t, double *XB, double *Xb);
 
 // c has a length of n
 //int argmax(const double *An, int m, int n, const double *c);
@@ -46,4 +57,6 @@ int findLeavingVariable(const double *b, const double *An, int m, int n, int e, 
 int pivot(const double *An, int m, int n);
 
 //void expand(const double *B, const double *An, int m, int n, int e, int *l, double *t);
+
+void swap(double *An, int m, int n, int c1, double *XB, int c2);
 
