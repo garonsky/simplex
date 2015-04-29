@@ -6,6 +6,7 @@ double calcEuclideanDistance(const double *d, int m, int n, int c);
 
 int findEnteringVariable(const double *An, int m, int n, const double *c);
 int findEnteringVariable2(const double *An, int m, int n, const double *c);
+int findEnteringVariable3(const double *An, int m, int n, const double *c);
 int findLeavingVariable(const double *b, const double *An, int m, int n, int e, int *l, double *t);
 void eliminate(double *a, int m, int n, int e, int l, double *b, double *c, double *z);
 void copyRow(double *r, const double* An, int m, int n, int l);

@@ -133,7 +133,8 @@ void eliminate(double *a, int m, int n, int e, int l, double *b, double *c, doub
         memset(x,0, sizeof(double)*m);
         x[idx-1] = 1;
 
-        alpha = -1.0 * orig_y[e-1]/(a[getIndex(m,n,idx, e)]);
+        alpha = -1.0 / ( orig_y[e-1]/(a[getIndex(m,n,idx, e)]));
+        printf("alpha = %f\n",alpha);
 
         b[idx-1] += (alpha * orig_b[l-1]);
 
@@ -149,12 +150,12 @@ void eliminate(double *a, int m, int n, int e, int l, double *b, double *c, doub
         //printArray(1,m,b,0,"b");
     }
 
-    double multiple = -1.0 * (c[l-1]/(a[getIndex(m,n,l,e)]));
+    double multiple = -1.0 * ((c[e-1]/(a[getIndex(m,n,l,e)])));
 
     copyRow(temp_r, a, m, n, l);
 
-    /*printf("multiple = %f\n", multiple);
-    printf("temp_r = \n");
+    printf("multiple = %f\n", multiple);
+    /*printf("temp_r = \n");
     printArray(1, n, temp_r, 0,"c");
     printf("c = \n");
     printArray(1, n, c, 0,"c");*/
@@ -341,6 +342,44 @@ int findEnteringVariable2(const double *a, int m, int n, const double *c)
     return e;  // // line #3
 }
 
+int findEnteringVariable3(const double *a, int m, int n, const double *c)
+{
+    assert(a);
+    assert(m > 0 && n > 0);
+
+    double min = -1.0;
+    double ratio = 0;
+    int allpos = 1;
+    int first = 1;
+    int e = -1;
+    int j = 1;
+
+    for (j = 1; j <= n; j++)  // loop through columns and find largest ratio of the c/norm
+    {
+        if (c[j-1] < 0)
+        {
+            allpos = -1;
+        }
+        ratio = c[j-1];
+        if (ratio <= min || first == 1)   // line #3
+        {
+            min = ratio;
+            e = j;  // e stores the column index
+            first = 0;
+        }
+    }
+
+    if (allpos > 0)
+    {
+        printf ("\n***Optimal Found!\n\n");  // line #5
+        exit(0);
+    }
+
+    printf ("Entering column = %d\n",e);
+    return e;  // // line #3
+}
+
+
 
 // An (not base matrix
 // B  Ax = B
@@ -359,6 +398,11 @@ int findLeavingVariable(const double *b, const double *a, int m, int n, int e, i
         if (a[idx] == 0)
         {
             printf ("\n{%d,%d}, has a 0 divisor skipping as unbounded\n", rowIdx, e);
+            continue;
+        }
+        if (a[idx] < 0)
+        {
+            printf ("\n{%d,%d}, is < 0 skipping\n", rowIdx, e);
             continue;
         }
 
@@ -455,14 +499,16 @@ int main ( )
    a[m*4+2] = 1;
 
    int iter = 0;
-   while (iter < 1)
+   while (iter < 50)
    {
        printMatrix(a, m, n, b, c, z, "initial matrix");
        //printArray(1, n, c, 0,"c");
 
-       int e = findEnteringVariable2(a, m, n-m, c);
+       //int e = findEnteringVariable2(a, m, n-m, c);
+       int e = findEnteringVariable3(a, m, n, c);
        int l = -1;
-       findLeavingVariable(b, a, m ,n-m, e, &l, &t);
+       //findLeavingVariable(b, a, m ,n-m, e, &l, &t);
+       findLeavingVariable(b, a, m ,n, e, &l, &t);
 
        eliminate(a, m, n, e, l, b, c, &z);
 
@@ -472,6 +518,9 @@ int main ( )
        //swapColumn(a, 1, n, e, c, val);
 
        printMatrix(a, m, n, b, c, z, "eliminated matrix");
+       //swapColumn(a,m,n,e,a,m+l);
+       //swapColumn(c,1,n,e,c,m+l);
+       //printMatrix(a, m, n, b, c, z, "swapped matrix");
        //printArray(1, n, c, 0,"c");
        iter++;
     }
