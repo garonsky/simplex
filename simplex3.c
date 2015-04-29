@@ -448,9 +448,10 @@ int main ( )
    order = CblasColMajor;
    transa = CblasNoTrans;
 
-   m = 3; /* Size of Column ( the number of rows ) */
-   n = 5; /* Size of Row ( the number of columns ) */
-   lda = 3; /* Leading dimension of 5 * 4 matrix is 5 */
+   m = 4; /* Size of Column ( the number of rows ) */
+   n = 6; /* Size of Row ( the number of columns ) */
+   lda = 4; /* Leading dimension of 5 * 4 matrix is 5 */
+
    incx = 1;
    incy = 1;
    alpha = 1;
@@ -460,42 +461,49 @@ int main ( )
    b = (double *)malloc(sizeof(double)*n);
    c = (double *)malloc(sizeof(double)*(n+m));
 
-   b[0] = 66;
-   b[1] = 180;
-   b[2] = 200;
-   //b[3] = 1;
+   b[0] = 6;
+   b[1] = 3;
+   b[2] = 5;
+   b[3] = 4;
 
-   c[0] = -90;
-   c[1] = -75;
+   c[0] = -4;
+   c[1] = -3;
    c[2] = 0;
    c[3] = 0;
    c[4] = 0;
-   //c[5] = 0;
+   c[5] = 0;
 
    /* The elements of the first column */
-   a[0] = 3;
-   a[1] = 9;
-   a[2] = 2;
-   //a[3] = 4;
+   a[0] = 2;
+   a[1] = -3;
+   a[2] = 0;
+   a[3] = 2;
    /* The elements of the second column */
-   a[m] = 2;
-   a[m+1] = 4;
-   a[m+2] = 10;
-   //a[m+3] = 8;
+   a[m] = 3;
+   a[m+1] = 2;
+   a[m+2] = 2;
+   a[m+3] = 1;
    /* The elements of the third column */
    a[m*2] = 1;
    a[m*2+1] = 0;
    a[m*2+2] = 0;
-   //a[m*2+3] = 12;
+   a[m*2+3] = 0;
    /* The elements of the fourth column */
    a[m*3] = 0;
    a[m*3+1] = 1;
    a[m*3+2] = 0;
-   //a[m*3+3] = 16;
+   a[m*3+3] = 0;
 
    /* The elements of the fifth column */
    a[m*4] = 0;
    a[m*4+1] = 0;
+   a[m*4+2] = 1;
+   a[m*4+2] = 0;
+
+   /* The elements of the sixth column */
+   a[m*4] = 0;
+   a[m*4+1] = 0;
+   a[m*4+2] = 0;
    a[m*4+2] = 1;
 
    int iter = 0;
