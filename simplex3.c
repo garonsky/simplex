@@ -108,15 +108,11 @@ void eliminate(double *a, int m, int n, int e, int l, double *b, double *c, doub
 
     x[l-1] = 1;
 
-    /*printf("1st:\n");
-    printArray(1,n,y,0,"y");
-    printArray(1,m,x,0,"x");
-    printArray(1,m,b,0,"b");
-    printArray(1,m,orig_b,0,"orig_b");*/
+
     cblas_dger(order, m, n, alpha, x, incx, y, incy, a, lda);
     b[l-1] += alpha*b[l-1];
 
-    printMatrix(a, m, n, b, c, *z, "set pivot to 1");
+    //printMatrix(a, m, n, b, c, *z, "set pivot to 1");
     /***
      * zero out the rest of equations
      * */
@@ -134,45 +130,23 @@ void eliminate(double *a, int m, int n, int e, int l, double *b, double *c, doub
         x[idx-1] = 1;
 
         alpha = -1.0 / ( orig_y[e-1]/(a[getIndex(m,n,idx, e)]));
-        printf("alpha = %f\n",alpha);
+        //printf("alpha = %f\n",alpha);
 
         b[idx-1] += (alpha * orig_b[l-1]);
 
-        /*printf("2nd:\n");
-        printf("alpha = %f\n", alpha);
-        printArray(1,n,orig_y,0,"orig_y");
-        printArray(1,n,y,0,"y");
-        printArray(1,m,x,0,"x");
-        printArray(1,m,b,0,"b");
-        printArray(1,m,orig_b,0,"orig_b");*/
-
         cblas_dger(order, m, n, alpha, x, incx, orig_y, incy, a, lda);
-        //printArray(1,m,b,0,"b");
     }
 
     double multiple = -1.0 * ((c[e-1]/(a[getIndex(m,n,l,e)])));
 
     copyRow(temp_r, a, m, n, l);
 
-    printf("multiple = %f\n", multiple);
-    /*printf("temp_r = \n");
-    printArray(1, n, temp_r, 0,"c");
-    printf("c = \n");
-    printArray(1, n, c, 0,"c");*/
+    //printf("multiple = %f\n", multiple);
 
     cblas_daxpy(n, multiple, temp_r, incx, c, incy);
 
-    /*printf("temp_r = \n");
-    printArray(1, n, temp_r,0,"temp_r");
-    printf("c = \n");
-    printArray(1, n, c, 0,"c");*/
-
-    //printf("b[l-1] = %f\n", b[l-1]);
-
-/*    printf("b =\n");
-    printArray(m,1, b, 1, "b");*/
     *z = *z + multiple * b[l-1];
-    printf ("z = %f\n", *z);
+    //printf ("z = %f\n", *z);
 
     free(x);
     free(y);
@@ -297,7 +271,7 @@ int findEnteringVariable(const double *a, int m, int n, const double *c)
     if (max > 0)
     {
         printf ("\n***Optimal Found!\n\n");  // line #5
-        exit(0);
+        return -1;
     }
 
     printf ("Entering column = %d\n",e);
@@ -372,10 +346,10 @@ int findEnteringVariable3(const double *a, int m, int n, const double *c)
     if (allpos > 0)
     {
         printf ("\n***Optimal Found!\n\n");  // line #5
-        exit(0);
+        return -1;
     }
 
-    printf ("Entering column = %d\n",e);
+    //printf ("Entering column = %d\n",e);
     return e;  // // line #3
 }
 
@@ -397,12 +371,12 @@ int findLeavingVariable(const double *b, const double *a, int m, int n, int e, i
 
         if (a[idx] == 0)
         {
-            printf ("\n{%d,%d}, has a 0 divisor skipping as unbounded\n", rowIdx, e);
+            //printf ("\n{%d,%d}, has a 0 divisor skipping as unbounded\n", rowIdx, e);
             continue;
         }
         if (a[idx] < 0)
         {
-            printf ("\n{%d,%d}, is < 0 skipping\n", rowIdx, e);
+            //printf ("\n{%d,%d}, is < 0 skipping\n", rowIdx, e);
             continue;
         }
 
@@ -410,7 +384,7 @@ int findLeavingVariable(const double *b, const double *a, int m, int n, int e, i
         {
             *t = b[rowIdx-1]/a[idx]; // t= min { bi/Aie | cj > 0 for all j element of N
             *l = rowIdx;
-            printf ("{%d,%d}, is new min with t = %f\n", rowIdx, e, *t);
+            //printf ("{%d,%d}, is new min with t = %f\n", rowIdx, e, *t);
         }
         else
         {
@@ -430,7 +404,7 @@ int findLeavingVariable(const double *b, const double *a, int m, int n, int e, i
         exit(0);
     }
 
-    printf("Leaving row = %d\n", *l);
+    //printf("Leaving row = %d\n", *l);
 }
 
 
@@ -506,35 +480,26 @@ int main ( )
    a[m*4+2] = 0;
    a[m*4+2] = 1;
 
+   printMatrix(a, m, n, b, c, z, "input matrix");
+
    int iter = 0;
    while (iter < 50)
    {
-       printMatrix(a, m, n, b, c, z, "initial matrix");
-       //printArray(1, n, c, 0,"c");
-
-       //int e = findEnteringVariable2(a, m, n-m, c);
        int e = findEnteringVariable3(a, m, n, c);
+
+       if (e == -1)
+       {
+            printMatrix(a, m, n, b, c, z, "solution matrix");
+            exit(0);
+       }
        int l = -1;
-       //findLeavingVariable(b, a, m ,n-m, e, &l, &t);
+
        findLeavingVariable(b, a, m ,n, e, &l, &t);
 
        eliminate(a, m, n, e, l, b, c, &z);
 
-       //int val = m+l;
-       //printf("val =%d\n",val);
-       //swapColumn(a, m, n, e, a, val);
-       //swapColumn(a, 1, n, e, c, val);
-
-       printMatrix(a, m, n, b, c, z, "eliminated matrix");
-       //swapColumn(a,m,n,e,a,m+l);
-       //swapColumn(c,1,n,e,c,m+l);
-       //printMatrix(a, m, n, b, c, z, "swapped matrix");
-       //printArray(1, n, c, 0,"c");
        iter++;
     }
-
-//   eliminate(a, m, n, 1, 1);
-//   printMatrix(a, m, n);
 
    free(a);
    free(b);
