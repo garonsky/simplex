@@ -72,9 +72,94 @@ void swapColumn(double *An, int m, int n, int c1, double *XB, int c2);
    a[m*4+2] = 0;
 
    /* The elements of the sixth column */
-   a[m*4] = 0;
+   a[m*5] = 0;
+   a[m*5+1] = 0;
+   a[m*5+2] = 0;
+   a[m*5+2] = 1;
+
+#endif
+
+
+#ifdef 0
+   b[0] = 29;
+   b[1] = -10;
+   b[2] = 3;
+   b[3] = 20;
+   b[4] = 20;
+
+   c[0] = -2;
+   c[1] = -4;
+   c[2] = 4;
+   c[3] = -9;
+   c[4] = 0;
+   c[5] = 0;
+   c[6] = 0;
+   c[7] = 0;
+   c[8] = 0;
+
+   /* The elements of the first column */
+   a[0] = 2;
+   a[1] = -1;
+   a[2] = 0;
+   a[3] = 1;
+   a[4] = 0;
+   /* The elements of the second column */
+   a[m] = 3;
+   a[m+1] = -1;
+   a[m+2] = 1;
+   a[m+3] = 1;
+   a[m+4] = 0;
+   /* The elements of the third column */
+   a[m*2] = 0;
+   a[m*2+1] = 0;
+   a[m*2+2] = 0;
+   a[m*2+3] = 0;
+   a[m*2+4] = 1;
+   /* The elements of the fourth column */
+   a[m*3]   = 0;
+   a[m*3+1] = 0;
+   a[m*3+2] = 0;
+   a[m*3+3] = -1;
+   a[m*3+4] = 1;
+
+   /* The elements of the fifth column */
+   a[m*4]   = 1;
    a[m*4+1] = 0;
    a[m*4+2] = 0;
-   a[m*4+2] = 1;
+   a[m*4+3] = 0;
+   a[m*4+4] = 0;
+
+
+   /* The elements of the sixth column */
+   a[m*5]   = 0;
+   a[m*5+1] = 1;
+   a[m*5+2] = 0;
+   a[m*5+3] = 0;
+   a[m*5+4] = 0;
+
+   /* The elements of the seventh column */
+   a[m*6]   = 0;
+   a[m*6+1] = 0;
+   a[m*6+2] = 1;
+   a[m*6+3] = 0;
+   a[m*6+4] = 0;
+
+
+   /* The elements of the eighth column */
+   a[m*7]   = 0;
+   a[m*7+1] = 0;
+   a[m*7+2] = 0;
+   a[m*7+3] = 1;
+   a[m*7+4] = 0;
+
+
+   /* The elements of the ninth column */
+   a[m*8]   = 0;
+   a[m*8+1] = 0;
+   a[m*8+2] = 0;
+   a[m*8+3] = 0;
+   a[m*8+4] = 1;
+
+   //x1=10; x2=3.0; x3=0; x4=20; z = 212
 
 #endif

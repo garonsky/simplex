@@ -5,6 +5,8 @@
 #include "string.h"
 #include "math.h"
 
+#define _VERBOSE_    1
+
 int getIndex(int nRows, int nCols, int r, int c)
 {
     r--;
@@ -111,8 +113,9 @@ void eliminate(double *a, int m, int n, int e, int l, double *b, double *c, doub
 
     cblas_dger(order, m, n, alpha, x, incx, y, incy, a, lda);
     b[l-1] += alpha*b[l-1];
-
-    //printMatrix(a, m, n, b, c, *z, "set pivot to 1");
+#ifdef _VERBOSE_
+    printMatrix(a, m, n, b, c, *z, "set pivot to 1");
+#endif
     /***
      * zero out the rest of equations
      * */
@@ -130,23 +133,31 @@ void eliminate(double *a, int m, int n, int e, int l, double *b, double *c, doub
         x[idx-1] = 1;
 
         alpha = -1.0 / ( orig_y[e-1]/(a[getIndex(m,n,idx, e)]));
-        //printf("alpha = %f\n",alpha);
+        printf("alpha = %f\n",alpha);
 
         b[idx-1] += (alpha * orig_b[l-1]);
 
         cblas_dger(order, m, n, alpha, x, incx, orig_y, incy, a, lda);
+
+#ifdef _VERBOSE_
+        printMatrix(a, m, n, b, c, *z, "zeroing rows");
+#endif
     }
 
     double multiple = -1.0 * ((c[e-1]/(a[getIndex(m,n,l,e)])));
 
     copyRow(temp_r, a, m, n, l);
 
-    //printf("multiple = %f\n", multiple);
+#ifdef _VERBOSE_
+    printf("multiple = %f\n", multiple);
+#endif
 
     cblas_daxpy(n, multiple, temp_r, incx, c, incy);
 
     *z = *z + multiple * b[l-1];
+#ifdef _VERBOSE_
     //printf ("z = %f\n", *z);
+#endif
 
     free(x);
     free(y);
@@ -312,7 +323,9 @@ int findEnteringVariable2(const double *a, int m, int n, const double *c)
         exit(0);
     }
 
+#ifdef _VERBOSE_
     printf ("Entering column = %d\n",e);
+#endif
     return e;  // // line #3
 }
 
@@ -349,7 +362,9 @@ int findEnteringVariable3(const double *a, int m, int n, const double *c)
         return -1;
     }
 
-    //printf ("Entering column = %d\n",e);
+#ifdef _VERBOSE_
+    printf ("Entering column = %d\n",e);
+#endif
     return e;  // // line #3
 }
 
@@ -371,12 +386,16 @@ int findLeavingVariable(const double *b, const double *a, int m, int n, int e, i
 
         if (a[idx] == 0)
         {
-            //printf ("\n{%d,%d}, has a 0 divisor skipping as unbounded\n", rowIdx, e);
+#ifdef _VERBOSE_
+            printf ("\n{%d,%d}, has a 0 divisor skipping as unbounded\n", rowIdx, e);
+#endif
             continue;
         }
         if (a[idx] < 0)
         {
-            //printf ("\n{%d,%d}, is < 0 skipping\n", rowIdx, e);
+#ifdef _VERBOSE_
+            printf ("\n{%d,%d}, is < 0 skipping\n", rowIdx, e);
+#endif
             continue;
         }
 
@@ -384,7 +403,9 @@ int findLeavingVariable(const double *b, const double *a, int m, int n, int e, i
         {
             *t = b[rowIdx-1]/a[idx]; // t= min { bi/Aie | cj > 0 for all j element of N
             *l = rowIdx;
-            //printf ("{%d,%d}, is new min with t = %f\n", rowIdx, e, *t);
+#ifdef _VERBOSE_
+            printf ("{%d,%d}, is new min with t = %f\n", rowIdx, e, *t);
+#endif
         }
         else
         {
@@ -403,8 +424,9 @@ int findLeavingVariable(const double *b, const double *a, int m, int n, int e, i
         printf ("\n***Unbounded!\n");
         exit(0);
     }
-
-    //printf("Leaving row = %d\n", *l);
+#ifdef _VERBOSE_
+    printf("Leaving row = %d\n", *l);
+#endif
 }
 
 
@@ -422,9 +444,9 @@ int main ( )
    order = CblasColMajor;
    transa = CblasNoTrans;
 
-   m = 4; /* Size of Column ( the number of rows ) */
-   n = 6; /* Size of Row ( the number of columns ) */
-   lda = 4; /* Leading dimension of 5 * 4 matrix is 5 */
+   m = 5; /* Size of Column ( the number of rows ) */
+   n = 9; /* Size of Row ( the number of columns ) */
+   lda = 5; /* Leading dimension of 5 * 4 matrix is 5 */
 
    incx = 1;
    incy = 1;
@@ -435,50 +457,84 @@ int main ( )
    b = (double *)malloc(sizeof(double)*n);
    c = (double *)malloc(sizeof(double)*(n+m));
 
-   b[0] = 6;
-   b[1] = 3;
-   b[2] = 5;
-   b[3] = 4;
+   b[0] = 29;
+   b[1] = -10;
+   b[2] = 3;
+   b[3] = 20;
+   b[4] = 20;
 
-   c[0] = -4;
-   c[1] = -3;
-   c[2] = 0;
-   c[3] = 0;
+   c[0] = -2;
+   c[1] = -4;
+   c[2] = 4;
+   c[3] = -9;
    c[4] = 0;
    c[5] = 0;
+   c[6] = 0;
+   c[7] = 0;
+   c[8] = 0;
 
    /* The elements of the first column */
    a[0] = 2;
-   a[1] = -3;
+   a[1] = -1;
    a[2] = 0;
-   a[3] = 2;
+   a[3] = 1;
+   a[4] = 1;
    /* The elements of the second column */
    a[m] = 3;
-   a[m+1] = 2;
-   a[m+2] = 2;
+   a[m+1] = -1;
+   a[m+2] = 1;
    a[m+3] = 1;
+   a[m+4] = 0;
    /* The elements of the third column */
-   a[m*2] = 1;
+   a[m*2] = 0;
    a[m*2+1] = 0;
    a[m*2+2] = 0;
    a[m*2+3] = 0;
+   a[m*2+4] = 1;
    /* The elements of the fourth column */
-   a[m*3] = 0;
-   a[m*3+1] = 1;
+   a[m*3]   = 0;
+   a[m*3+1] = 0;
    a[m*3+2] = 0;
-   a[m*3+3] = 0;
+   a[m*3+3] = -1;
+   a[m*3+4] = 1;
 
    /* The elements of the fifth column */
-   a[m*4] = 0;
+   a[m*4]   = 1;
    a[m*4+1] = 0;
-   a[m*4+2] = 1;
    a[m*4+2] = 0;
+   a[m*4+3] = 0;
+   a[m*4+4] = 0;
+
 
    /* The elements of the sixth column */
-   a[m*4] = 0;
-   a[m*4+1] = 0;
-   a[m*4+2] = 0;
-   a[m*4+2] = 1;
+   a[m*5]   = 0;
+   a[m*5+1] = 1;
+   a[m*5+2] = 0;
+   a[m*5+3] = 0;
+   a[m*5+4] = 0;
+
+   /* The elements of the seventh column */
+   a[m*6]   = 0;
+   a[m*6+1] = 0;
+   a[m*6+2] = 1;
+   a[m*6+3] = 0;
+   a[m*6+4] = 0;
+
+
+   /* The elements of the eighth column */
+   a[m*7]   = 0;
+   a[m*7+1] = 0;
+   a[m*7+2] = 0;
+   a[m*7+3] = 1;
+   a[m*7+4] = 0;
+
+
+   /* The elements of the ninth column */
+   a[m*8]   = 0;
+   a[m*8+1] = 0;
+   a[m*8+2] = 0;
+   a[m*8+3] = 0;
+   a[m*8+4] = 1;
 
    printMatrix(a, m, n, b, c, z, "input matrix");
 
