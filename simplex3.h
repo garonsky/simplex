@@ -1,6 +1,6 @@
 int getIndex(int nRows, int nCols, int r, int c);
 void printArray(int m, int n, double *c, int transpose, const char* label);
-void printMatrix(double *a, int m, int n, double *b, double *c, double z, const char *label);
+void printMatrix(double *a, int m, int n, double *b, double *c, double z, const char *label,  int pl = -1, int pe = -1);
 void printLine(int nFactor);
 double calcEuclideanDistance(const double *d, int m, int n, int c);
 

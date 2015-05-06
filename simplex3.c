@@ -114,7 +114,7 @@ void eliminate(double *a, int m, int n, int e, int l, double *b, double *c, doub
     cblas_dger(order, m, n, alpha, x, incx, y, incy, a, lda);
     b[l-1] += alpha*b[l-1];
 #ifdef _VERBOSE_
-    printMatrix(a, m, n, b, c, *z, "set pivot to 1");
+    printMatrix(a, m, n, b, c, *z, "set pivot to 1", l, e);
 #endif
     /***
      * zero out the rest of equations
@@ -140,7 +140,8 @@ void eliminate(double *a, int m, int n, int e, int l, double *b, double *c, doub
         cblas_dger(order, m, n, alpha, x, incx, orig_y, incy, a, lda);
 
 #ifdef _VERBOSE_
-        printMatrix(a, m, n, b, c, *z, "zeroing rows");
+        printf("\nZeroing row: %d on col: %d\n",idx, e);
+        printMatrix(a, m, n, b, c, *z, "zeroing columns", l, e);
 #endif
     }
 
@@ -148,15 +149,12 @@ void eliminate(double *a, int m, int n, int e, int l, double *b, double *c, doub
 
     copyRow(temp_r, a, m, n, l);
 
+    cblas_daxpy(n, multiple, temp_r, incx, c, incy);
+    *z = *z + multiple * b[l-1];
+
 #ifdef _VERBOSE_
     printf("multiple = %f\n", multiple);
-#endif
-
-    cblas_daxpy(n, multiple, temp_r, incx, c, incy);
-
-    *z = *z + multiple * b[l-1];
-#ifdef _VERBOSE_
-    //printf ("z = %f\n", *z);
+    printMatrix(a, m, n, b, c, *z, "zeroing coeffiecient column", l, e);
 #endif
 
     free(x);
@@ -202,7 +200,7 @@ void printLine(int nFactor)
 }
 
 
-void printMatrix(double *a, int m, int n, double *b, double *c, double z, const char *label)
+void printMatrix(double *a, int m, int n, double *b, double *c, double z, const char *label, int pl, int pe)
 {
     int rowC = 0;
     int colC = 0;
@@ -216,11 +214,25 @@ void printMatrix(double *a, int m, int n, double *b, double *c, double z, const 
         {
             if (a[getIndex(m, n, rowC+1, colC+1)] >= 0)
             {
-                printf("\t %f",a[getIndex(m, n, rowC+1, colC+1)]);
+                if (pl > 0 && pe > 0 && pl == rowC+1 && pe == colC+1)
+                {
+                    printf("\t -> %f <-",a[getIndex(m, n, rowC+1, colC+1)]);
+                }
+                else
+                {
+                    printf("\t %f",a[getIndex(m, n, rowC+1, colC+1)]);
+                }
             }
             else
             {
-                printf("\t%f", a[getIndex(m, n, rowC+1, colC+1)]);
+                if (pl > 0 && pe > 0 && pl == rowC+1 && pe == colC+1)
+                {
+                    printf("\t-> %f <-", a[getIndex(m, n, rowC+1, colC+1)]);
+                }
+                else
+                {
+                    printf("\t%f", a[getIndex(m, n, rowC+1, colC+1)]);
+                }
             }
             colC++;
         }
@@ -391,11 +403,16 @@ int findLeavingVariable(const double *b, const double *a, int m, int n, int e, i
 #endif
             continue;
         }
-        if (a[idx] < 0)
+        if (b[rowIdx-1]/a[idx] < 0)
         {
 #ifdef _VERBOSE_
-            printf ("\n{%d,%d}, is < 0 skipping\n", rowIdx, e);
+            printf ("\n%f/%f < 0 {%d,%d}, is < 0 skipping\n", b[rowIdx-1], a[idx], rowIdx, e);
 #endif
+            continue;
+        }
+        if (b[rowIdx-1] == 0 && a[idx] < 0)
+        {
+            printf("ration is %f/%f = %f which is negative, skipping\n", b[rowIdx-1], a[idx],  b[rowIdx-1]/a[idx]);
             continue;
         }
 
@@ -425,7 +442,8 @@ int findLeavingVariable(const double *b, const double *a, int m, int n, int e, i
         exit(0);
     }
 #ifdef _VERBOSE_
-    printf("Leaving row = %d\n", *l);
+    //printf("Leaving row = %d\n", *l);
+      //printMatrix(a, m, n, b, c, z, "pivot found", *l, e);
 #endif
 }
 
@@ -536,7 +554,7 @@ int main ( )
    a[m*8+3] = 0;
    a[m*8+4] = 1;
 
-   printMatrix(a, m, n, b, c, z, "input matrix");
+   printMatrix(a, m, n, b, c, z, "input matrix",-1,-1);
 
    int iter = 0;
    while (iter < 50)
@@ -545,12 +563,13 @@ int main ( )
 
        if (e == -1)
        {
-            printMatrix(a, m, n, b, c, z, "solution matrix");
+            printMatrix(a, m, n, b, c, z, "solution matrix", -1, -1);
             exit(0);
        }
        int l = -1;
 
        findLeavingVariable(b, a, m ,n, e, &l, &t);
+       printMatrix(a, m, n, b, c, z, "pivot found", l, e);
 
        eliminate(a, m, n, e, l, b, c, &z);
 
