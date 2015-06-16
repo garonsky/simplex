@@ -94,6 +94,14 @@ void eliminate(double *a, int m, int n, int e, int l, double *b, double *c, doub
     double *temp_r = (double *)malloc(sizeof(double)*n);
     double *temp_c = (double *)malloc(sizeof(double)*m);
 
+    double *A = (double *)malloc(sizeof(double)*m*n);
+    double *B = (double *)malloc(sizeof(double)*m*n);
+    double *C = (double *)malloc(sizeof(double)*n*m);
+
+    memset(A, 0, sizeof(double)*m*n);
+    memset(B, 0, sizeof(double)*m*n);
+    memset(C, 0, sizeof(double)*m*n);
+
     memset(x,0, sizeof(double)*m);
     int idx,idx2;
 
@@ -101,6 +109,8 @@ void eliminate(double *a, int m, int n, int e, int l, double *b, double *c, doub
     {
         y[idx-1] = a[getIndex(m,n,l,idx)];
         orig_y[idx-1] = a[getIndex(m,n,l,idx)];
+        A[getIndex(m,n,l,idx)] = a[getIndex(m,n,l,idx)];
+        B[getIndex(n,m,idx,l)] = alpha;
     }
 
     for (idx = 1; idx <= m; idx++)
@@ -127,6 +137,7 @@ void eliminate(double *a, int m, int n, int e, int l, double *b, double *c, doub
         for (idx2 = 1; idx2 <= n; idx2++)
         {
             y[idx-1] = a[getIndex(m,n,idx,idx2)];
+            C[getIndex(m,n,idx, idx2)] = a[getIndex(m,n,l,idx2)];
         }
 
         memset(x,0, sizeof(double)*m);
@@ -135,6 +146,21 @@ void eliminate(double *a, int m, int n, int e, int l, double *b, double *c, doub
         alpha = -1.0 / ( orig_y[e-1]/(a[getIndex(m,n,idx, e)]));
         printf("alpha = %f\n",alpha);
 
+
+        for (idx2 = 1; idx2 <= n; idx2++)
+        {
+            //A[getIndex(m,n,idx, idx2)] = alpha * orig_y[idx2-1];
+            A[getIndex(m,n,idx, idx2)] = orig_y[idx2-1];
+            B[getIndex(n,m,idx2, idx)] = alpha;
+        }
+
+        int idx3 = 1;
+
+        for (idx3 = 1; idx3 <= n; idx3++)
+        {
+         //   A[getIndex(m,n,idx,idx3)] = alpha;
+        }
+
         b[idx-1] += (alpha * orig_b[l-1]);
 
         cblas_dger(order, m, n, alpha, x, incx, orig_y, incy, a, lda);
@@ -142,6 +168,8 @@ void eliminate(double *a, int m, int n, int e, int l, double *b, double *c, doub
 #ifdef _VERBOSE_
         printf("\nZeroing row: %d on col: %d\n",idx, e);
         printMatrix(a, m, n, b, c, *z, "zeroing columns", l, e);
+        printMatrix(A, m, n, 0, 0, *z, "dgemm A");
+        printMatrix(B, n, m, 0, 0, *z, "dgemm B");
 #endif
     }
 
@@ -236,7 +264,10 @@ void printMatrix(double *a, int m, int n, double *b, double *c, double z, const 
             }
             colC++;
         }
-        printf ("\t|    %f\n",b[rowC]);
+        if (b != 0)
+            printf ("\t|    %f\n",b[rowC]);
+        else
+            printf ("\t|    \n");
 
         if (rowC+1 < m)
         {
@@ -247,10 +278,16 @@ void printMatrix(double *a, int m, int n, double *b, double *c, double z, const 
     }
     printLine(n);
 
-    for (colC = 1; colC <= n; colC++)
+    if (c != 0)
     {
-        printf("\t%f", c[colC-1]);
+        for (colC = 1; colC <= n; colC++)
+        {
+            printf("\t%f", c[colC-1]);
+        }
     }
+    else
+        printf ("\t|    \n");
+
     printf("\t|   %f",z);
     printf("\n");
     printLine(n);
@@ -462,9 +499,10 @@ int main ( )
    order = CblasColMajor;
    transa = CblasNoTrans;
 
-   m = 5; /* Size of Column ( the number of rows ) */
-   n = 9; /* Size of Row ( the number of columns ) */
-   lda = 5; /* Leading dimension of 5 * 4 matrix is 5 */
+
+   m = 4; /* Size of Column ( the number of rows ) */
+   n = 6; /* Size of Row ( the number of columns ) */
+   lda = 4; /* Leading dimension of 5 * 4 matrix is 5 */
 
    incx = 1;
    incy = 1;
@@ -475,84 +513,50 @@ int main ( )
    b = (double *)malloc(sizeof(double)*n);
    c = (double *)malloc(sizeof(double)*(n+m));
 
-   b[0] = 29;
-   b[1] = -10;
-   b[2] = 3;
-   b[3] = 20;
-   b[4] = 20;
+   b[0] = 6;
+   b[1] = 3;
+   b[2] = 5;
+   b[3] = 4;
 
-   c[0] = -2;
-   c[1] = -4;
-   c[2] = 4;
-   c[3] = -9;
+   c[0] = -4;
+   c[1] = -3;
+   c[2] = 0;
+   c[3] = 0;
    c[4] = 0;
    c[5] = 0;
-   c[6] = 0;
-   c[7] = 0;
-   c[8] = 0;
 
    /* The elements of the first column */
    a[0] = 2;
-   a[1] = -1;
+   a[1] = -3;
    a[2] = 0;
-   a[3] = 1;
-   a[4] = 1;
+   a[3] = 2;
    /* The elements of the second column */
    a[m] = 3;
-   a[m+1] = -1;
-   a[m+2] = 1;
+   a[m+1] = 2;
+   a[m+2] = 2;
    a[m+3] = 1;
-   a[m+4] = 0;
    /* The elements of the third column */
-   a[m*2] = 0;
+   a[m*2] = 1;
    a[m*2+1] = 0;
    a[m*2+2] = 0;
    a[m*2+3] = 0;
-   a[m*2+4] = 1;
    /* The elements of the fourth column */
-   a[m*3]   = 0;
-   a[m*3+1] = 0;
+   a[m*3] = 0;
+   a[m*3+1] = 1;
    a[m*3+2] = 0;
-   a[m*3+3] = -1;
-   a[m*3+4] = 1;
+   a[m*3+3] = 0;
 
    /* The elements of the fifth column */
-   a[m*4]   = 1;
+   a[m*4] = 0;
    a[m*4+1] = 0;
+   a[m*4+2] = 1;
    a[m*4+2] = 0;
-   a[m*4+3] = 0;
-   a[m*4+4] = 0;
-
 
    /* The elements of the sixth column */
-   a[m*5]   = 0;
-   a[m*5+1] = 1;
+   a[m*5] = 0;
+   a[m*5+1] = 0;
    a[m*5+2] = 0;
-   a[m*5+3] = 0;
-   a[m*5+4] = 0;
-
-   /* The elements of the seventh column */
-   a[m*6]   = 0;
-   a[m*6+1] = 0;
-   a[m*6+2] = 1;
-   a[m*6+3] = 0;
-   a[m*6+4] = 0;
-
-
-   /* The elements of the eighth column */
-   a[m*7]   = 0;
-   a[m*7+1] = 0;
-   a[m*7+2] = 0;
-   a[m*7+3] = 1;
-   a[m*7+4] = 0;
-
-
-   /* The elements of the ninth column */
-   a[m*8]   = 0;
-   a[m*8+1] = 0;
-   a[m*8+2] = 0;
-   a[m*8+3] = 0;
-   a[m*8+4] = 1;
+   a[m*5+2] = 1;
 
    printMatrix(a, m, n, b, c, z, "input matrix",-1,-1);
 
