@@ -1,70 +1,196 @@
-/* simplex.c */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include "cblas.h"
 #include "assert.h"
+#include "string.h"
 #include "math.h"
 
-int foundOptimal = 0;
+#define _VERBOSE_    1
 
-
-//int getEnteringVariable(const double An,
-
-
-void printLine(int nFactor)
+int getIndex(int nRows, int nCols, int r, int c)
 {
-    int n = 0;
+    r--;
+    c--;
 
-    printf("\n");
-    for (n = 0; n < nFactor+1; n++)
-    {
-        printf("-----------------");
-    }
-    printf("\n");
+    assert(r>=0 && r < nRows);
+    assert(c>=0 && c < nCols);
+    return c*nRows+r;
 }
 
-// m : rows
-// n : cols
-// a :
-void printMatrix(int m, int n, double *a, double *b, double *c, double zb)
+void swapColumn(double *An, int m, int n, int c1, double *XB, int c2)
 {
-    int rowC = 0;
-    int colC = 0;
+    double temp;
 
-    printf("\nMatrix:\n");
+    int idx;
 
-    printLine(n);
-    while (rowC < m)
+    for (idx = 1; idx <= m; idx++)
     {
-        while (colC < n)
+        temp = An[getIndex(m,n, idx, c1)];
+        An[getIndex(m,n, idx, c1)] = XB[getIndex(m,n, idx, c2)];
+        XB[getIndex(m,n, idx, c2)] = temp;
+    }
+}
+
+
+void copyRow(double *r, const double* An, int m, int n, int l)
+{
+    assert(r);
+    assert(An);
+
+    int idx;
+
+    for (idx = 1; idx <= n; idx++)
+    {
+        r[idx-1] = An[getIndex(m,n, l, idx)];
+    }
+}
+
+void copyRow2(const double *r, double* An, int m, int n, int l)
+{
+    assert(r);
+    assert(An);
+
+    int idx;
+
+    for (idx = 1; idx <= n; idx++)
+    {
+        An[getIndex(m,n, l, idx)] = r[idx-1];
+    }
+}
+
+
+double calcEuclideanDistance(const double *An, int m, int n, int j)  // line # 2
+{
+    assert(m > 0 && n > 0);
+
+    int idx = 0;
+    double norm = 0;
+
+    for (idx = 0; idx < m; idx++)
+    {
+        norm += powf(An[getIndex(m, n, idx+1, j)],2);
+    }
+
+    norm = sqrtf(norm);
+
+    return norm;
+}
+
+void eliminate(double *a, int m, int n, int e, int l, double *b, double *c, double *z)
+{
+    enum CBLAS_ORDER order;
+
+    int lda = m; /* Leading dimension of 5 * 4 matrix is 5 */
+    int incx = 1;
+    int incy = 1;
+
+    order = CblasColMajor;
+    double alpha = -1.0 * ((a[getIndex(m,n,l,e)]-1)/(a[getIndex(m,n,l,e)]));
+
+    double *x = (double *)malloc(sizeof(double)*m);
+    double *y = (double *)malloc(sizeof(double)*n);
+    double *orig_y = (double *)malloc(sizeof(double)*n);
+    double *orig_b = (double *)malloc(sizeof(double)*m);
+    double *temp_r = (double *)malloc(sizeof(double)*n);
+    double *temp_c = (double *)malloc(sizeof(double)*m);
+
+    double *A = (double *)malloc(sizeof(double)*m*n);
+    double *B = (double *)malloc(sizeof(double)*m*n);
+    double *C = (double *)malloc(sizeof(double)*n*m);
+
+    memset(A, 0, sizeof(double)*m*n);
+    memset(B, 0, sizeof(double)*m*n);
+    memset(C, 0, sizeof(double)*m*n);
+
+    memset(x,0, sizeof(double)*m);
+    int idx,idx2;
+
+    for (idx = 1; idx <= n; idx++)
+    {
+        y[idx-1] = a[getIndex(m,n,l,idx)];
+        orig_y[idx-1] = a[getIndex(m,n,l,idx)];
+        A[getIndex(m,n,l,idx)] = a[getIndex(m,n,l,idx)];
+        B[getIndex(n,m,idx,l)] = alpha;
+    }
+
+    for (idx = 1; idx <= m; idx++)
+    {
+       orig_b[idx-1] = b[idx-1];
+    }
+
+    x[l-1] = 1;
+
+    cblas_dger(order, m, n, alpha, x, incx, y, incy, a, lda);
+    b[l-1] += alpha*b[l-1];
+#ifdef _VERBOSE_
+    printMatrix(a, m, n, b, c, *z, "set pivot to 1", l, e);
+#endif
+    /***
+     * zero out the rest of equations
+     * */
+    for (idx = 1; idx <= m; idx++)
+    {
+        if (idx == l)
+            continue;
+
+        for (idx2 = 1; idx2 <= n; idx2++)
         {
-            printf("\t%f", a[getIndex(m, n, rowC+1, colC+1)]);
-            colC++;
+            y[idx-1] = a[getIndex(m,n,idx,idx2)];
+            C[getIndex(m,n,idx, idx2)] = a[getIndex(m,n,l,idx2)];
         }
-        printf(" | %f", b[rowC]);
-        printf("\n");
-        colC = 0;
-        rowC++;
+
+        memset(x,0, sizeof(double)*m);
+        x[idx-1] = 1;
+
+        alpha = -1.0 / ( orig_y[e-1]/(a[getIndex(m,n,idx, e)]));
+        printf("alpha = %f\n",alpha);
+
+
+        for (idx2 = 1; idx2 <= n; idx2++)
+        {
+            //A[getIndex(m,n,idx, idx2)] = alpha * orig_y[idx2-1];
+            A[getIndex(m,n,idx, idx2)] = orig_y[idx2-1];
+            B[getIndex(n,m,idx2, idx)] = alpha;
+        }
+
+        int idx3 = 1;
+
+        for (idx3 = 1; idx3 <= n; idx3++)
+        {
+         //   A[getIndex(m,n,idx,idx3)] = alpha;
+        }
+
+        b[idx-1] += (alpha * orig_b[l-1]);
+
+        cblas_dger(order, m, n, alpha, x, incx, orig_y, incy, a, lda);
+
+#ifdef _VERBOSE_
+        printf("\nZeroing row: %d on col: %d\n",idx, e);
+        printMatrix(a, m, n, b, c, *z, "zeroing columns", l, e);
+        printMatrix(A, m, n, 0, 0, *z, "dgemm A");
+        printMatrix(B, n, m, 0, 0, *z, "dgemm B");
+#endif
     }
 
-    colC = 0;
+    double multiple = -1.0 * ((c[e-1]/(a[getIndex(m,n,l,e)])));
 
-    while (colC < n)
-    {
-        printf("\t");
-        printf("%f", c[colC]);
-        colC++;
-    }
-    printf(" | %f", zb);
+    copyRow(temp_r, a, m, n, l);
 
-    printf("\n");
-    //printf("---------------------------------------\n");
-    printLine(n);
+    cblas_daxpy(n, multiple, temp_r, incx, c, incy);
+    *z = *z + multiple * b[l-1];
+
+#ifdef _VERBOSE_
+    printf("multiple = %f\n", multiple);
+    printMatrix(a, m, n, b, c, *z, "zeroing coeffiecient column", l, e);
+#endif
+
+    free(x);
+    free(y);
+    free(temp_r);
+    free(temp_c);
 }
 
-
-void printArray(int m, int n, double a[])
+void printArray(int m, int n, double *c, int transpose, const char* label)
 {
     int rowC = 0;
     int colC = 0;
@@ -73,7 +199,14 @@ void printArray(int m, int n, double a[])
     {
         while(colC < n)
         {
-            printf (" a[%d,%d] = %f\t", rowC+1, colC+1, a[getIndex(m, n, rowC+1, colC+1)]);
+            if (transpose == 0)
+            {
+                printf (" %s[%d,%d] = %f\t", label,rowC+1, colC+1, c[getIndex(m, n, rowC+1, colC+1)]);
+            }
+            else
+            {
+                printf (" %s[%d,%d] = %f\n", label,rowC+1, colC+1, c[getIndex(m, n, rowC+1, colC+1)]);
+            }
             colC++;
         }
         printf("\n");
@@ -82,257 +215,369 @@ void printArray(int m, int n, double a[])
     }
 }
 
-int getIndex(int nRows, int nCols, int r, int c)
+void printLine(int nFactor)
 {
-    r--;
-    c--;
+    int n = 0;
 
-    assert(r>=0);
-    assert(c>=0);
-    return c*nRows+r;
+    for (n = 0; n < nFactor+1; n++)
+    {
+        printf("-----------------");
+    }
+    printf("\n");
 }
 
-int getMaxCol2(double a[], int nRows, int nCols, int nStartRow)
+
+void printMatrix(double *a, int m, int n, double *b, double *c, double z, const char *label, int pl, int pe)
 {
-    int foundPos= 0;
-    int currentIdx = getIndex(nRows,nCols, nStartRow, 1);
-    int endIdx = getIndex(nRows, nCols, nStartRow, nCols);
+    int rowC = 0;
+    int colC = 0;
 
-    double max = -1;
+    printf("\nMatrix (%s):\n",label);
 
-    int i, max_i, arrIdx = -1;
-
-    for (i = 1; i <= nCols; i += 1)
+    printLine(n);
+    while (rowC < m)
     {
-        arrIdx = getIndex(nRows, nCols, nStartRow, i);
-        if  (a[arrIdx] > 0)
+        while (colC < n)
         {
-            foundPos = 1;
+            if (a[getIndex(m, n, rowC+1, colC+1)] >= 0)
+            {
+                if (pl > 0 && pe > 0 && pl == rowC+1 && pe == colC+1)
+                {
+                    printf("\t -> %f <-",a[getIndex(m, n, rowC+1, colC+1)]);
+                }
+                else
+                {
+                    printf("\t %f",a[getIndex(m, n, rowC+1, colC+1)]);
+                }
+            }
+            else
+            {
+                if (pl > 0 && pe > 0 && pl == rowC+1 && pe == colC+1)
+                {
+                    printf("\t-> %f <-", a[getIndex(m, n, rowC+1, colC+1)]);
+                }
+                else
+                {
+                    printf("\t%f", a[getIndex(m, n, rowC+1, colC+1)]);
+                }
+            }
+            colC++;
         }
+        if (b != 0)
+            printf ("\t|    %f\n",b[rowC]);
+        else
+            printf ("\t|    \n");
 
-        if (max < a[arrIdx])
+        if (rowC+1 < m)
         {
-            max = a[arrIdx];
-            max_i = i;
+         //   printf("\n");
+        }
+        colC = 0;
+        rowC++;
+    }
+    printLine(n);
+
+    if (c != 0)
+    {
+        for (colC = 1; colC <= n; colC++)
+        {
+            printf("\t%f", c[colC-1]);
+        }
+    }
+    else
+        printf ("\t|    \n");
+
+    printf("\t|   %f",z);
+    printf("\n");
+    printLine(n);
+    printf("\n");
+}
+
+// returns the column index (starting at column=1)
+// c are the objective function coefficients
+int findEnteringVariable(const double *a, int m, int n, const double *c)
+{
+    assert(a);
+    assert(m > 0 && n > 0);
+
+    double max = -1.0;
+    double ratio = 0;
+    int first = 1;
+    int e = -1;
+    int j = 1;
+
+    for (j = 1; j <= n; j++)  // loop through columns and find largest ratio of the c/norm
+    {
+        double Cj = c[j-1];
+
+        double Gj = calcEuclideanDistance(a, m, n, j);  // line #2
+
+        //printf("euclidean distance for col:%d is: %f\n", j, Gj);
+
+        Gj *= Gj; // line #2
+
+        // argmax
+        ratio = c[j-1] / sqrtf(Gj); // line #3
+        //printf("Ratio of {c[%d] = %f} (%f)/(%f) = %f\n",j, c[j-1], c[j-1], sqrtf(Gj), ratio);
+        if (ratio >= max || first == 1)   // line #3
+        {
+            max = c[j-1]/sqrtf(Gj);
+            e = j;  // e stores the column index
+            first = 0;
         }
     }
 
-    if (foundPos == 0)
+    if (max > 0)
     {
-        //printf("Optimal found!");
-        foundOptimal = 1;
+        printf ("\n***Optimal Found!\n\n");  // line #5
+        return -1;
     }
 
-    return max_i;
+    printf ("Entering column = %d\n",e);
+    return e;  // // line #3
 }
 
-int getMinRow2(double a[], int nRows, int nCols, int startCol, double *b)
+
+int findEnteringVariable2(const double *a, int m, int n, const double *c)
 {
-    int nStartRow = 1;
-    int endIdx = getIndex(nRows, nCols, nStartRow, nCols);
+    assert(a);
+    assert(m > 0 && n > 0);
 
-    double max = 0;
+    double max = -1.0;
+    double ratio = 0;
+    int allpos = 1;
+    int first = 1;
+    int e = -1;
+    int j = 1;
 
-    int i;
-    int max_i = nStartRow;
-    int arrIdx = -1;
-
-    for (i = nStartRow; i <= nRows; i += 1)
+    for (j = 1; j <= n; j++)  // loop through columns and find largest ratio of the c/norm
     {
-        arrIdx = getIndex(nRows, nCols, i, startCol);
-        endIdx = getIndex(nRows, nCols, nStartRow, nCols);
-        if (a[arrIdx] > 0 && max < a[endIdx]/b[i])
+        if (c[j-1] < 0)
         {
-            max = a[endIdx]/b[i]);
-            max_i = i;
+            allpos = -1;
+        }
+        ratio = abs(c[j-1]);
+        if (ratio >= max || first == 1)   // line #3
+        {
+            max = abs(ratio);
+            e = j;  // e stores the column index
+            first = 0;
         }
     }
 
-    return max_i;
+    if (allpos > 0)
+    {
+        printf ("\n***Optimal Found!\n\n");  // line #5
+        exit(0);
+    }
+
+#ifdef _VERBOSE_
+    printf ("Entering column = %d\n",e);
+#endif
+    return e;  // // line #3
 }
 
-int main (int argc, char *argv[])
+int findEnteringVariable3(const double *a, int m, int n, const double *c)
+{
+    assert(a);
+    assert(m > 0 && n > 0);
+
+    double min = -1.0;
+    double ratio = 0;
+    int allpos = 1;
+    int first = 1;
+    int e = -1;
+    int j = 1;
+
+    for (j = 1; j <= n; j++)  // loop through columns and find largest ratio of the c/norm
+    {
+        if (c[j-1] < 0)
+        {
+            allpos = -1;
+        }
+        ratio = c[j-1];
+        if (ratio <= min || first == 1)   // line #3
+        {
+            min = ratio;
+            e = j;  // e stores the column index
+            first = 0;
+        }
+    }
+
+    if (allpos > 0)
+    {
+        printf ("\n***Optimal Found!\n\n");  // line #5
+        return -1;
+    }
+
+#ifdef _VERBOSE_
+    printf ("Entering column = %d\n",e);
+#endif
+    return e;  // // line #3
+}
+
+
+
+// An (not base matrix
+// B  Ax = B
+// m rows in
+int findLeavingVariable(const double *b, const double *a, int m, int n, int e, int *l, double *t)
+{
+    *l = -1;
+    int rowIdx = 1;
+    int idx = 0;
+    double new_t = 0;
+
+    for (rowIdx = 1; rowIdx <= m; rowIdx++)
+    {
+        idx = getIndex(m, n, rowIdx, e);
+
+        if (a[idx] == 0)
+        {
+#ifdef _VERBOSE_
+            printf ("\n{%d,%d}, has a 0 divisor skipping as unbounded\n", rowIdx, e);
+#endif
+            continue;
+        }
+        if (b[rowIdx-1]/a[idx] < 0)
+        {
+#ifdef _VERBOSE_
+            printf ("\n%f/%f < 0 {%d,%d}, is < 0 skipping\n", b[rowIdx-1], a[idx], rowIdx, e);
+#endif
+            continue;
+        }
+        if (b[rowIdx-1] == 0 && a[idx] < 0)
+        {
+            printf("ration is %f/%f = %f which is negative, skipping\n", b[rowIdx-1], a[idx],  b[rowIdx-1]/a[idx]);
+            continue;
+        }
+
+        if (*l == -1)
+        {
+            *t = b[rowIdx-1]/a[idx]; // t= min { bi/Aie | cj > 0 for all j element of N
+            *l = rowIdx;
+#ifdef _VERBOSE_
+            printf ("{%d,%d}, is new min with t = %f\n", rowIdx, e, *t);
+#endif
+        }
+        else
+        {
+            new_t = b[rowIdx-1]/a[idx];
+
+            if (new_t < *t)
+            {
+                *t = new_t;
+                *l = rowIdx;
+            }
+        }
+    }
+
+    if ( *l == -1 )
+    {
+        printf ("\n***Unbounded!\n");
+        exit(0);
+    }
+#ifdef _VERBOSE_
+    //printf("Leaving row = %d\n", *l);
+      //printMatrix(a, m, n, b, c, z, "pivot found", *l, e);
+#endif
+}
+
+
+int main ( )
 {
    enum CBLAS_ORDER order;
    enum CBLAS_TRANSPOSE transa;
 
-   double *a, *x, *y, *b, *c;
-   double alpha, beta, zb;
+   double *a, *b, *c;
+   double t;
+   double alpha, beta;
+   double z = 0;
    int m, n, lda, incx, incy, i;
 
    order = CblasColMajor;
    transa = CblasNoTrans;
-   int iteration = 1;
 
    m = 3; /* Size of Column ( the number of rows ) */
-   n = 5; /* Size of Row ( the number of columns ) */
-   lda = 5; /* Leading dimension of 5 * 4 matrix is 5 */
+   n = 6; /* Size of Row ( the number of columns ) */
+   lda = 3; /* Leading dimension of 5 * 4 matrix is 5 */
+
    incx = 1;
    incy = 1;
    alpha = 1;
    beta = 0;
-   int IdentityMatrixOffSet = 2;
 
+   a = (double *)malloc(sizeof(double)*m*(n+m));
+   b = (double *)malloc(sizeof(double)*n);
+   c = (double *)malloc(sizeof(double)*(n+m));
 
-   a = (double *)malloc(sizeof(double)*m*n);
-   x = (double *)malloc(sizeof(double)*n);
-   y = (double *)malloc(sizeof(double)*n);
-   c = (double *)malloc(sizeof(double)*n);
-   b = (double *)malloc(sizeof(double)*m);
+   b[0] = 14;
+   b[1] = 28;
+   b[2] = 30;
 
-   zb = 0.0;
-   b[0] = 20;
-   b[1] = 4;
-   b[2] = 10;
-
-   c[0] = 2;
-   c[1] = 4;
-   c[2] = 0;
+   c[0] = -1;
+   c[1] = -2;
+   c[2] = 1;
    c[3] = 0;
    c[4] = 0;
    c[5] = 0;
-   //c[6] = 0;
-
 
    /* The elements of the first column */
    a[0] = 2;
-   a[1] = 1;
-   a[2] = 0;
-   //a[3] = 4;
+   a[1] = 4;
+   a[2] = 2;
+
    /* The elements of the second column */
-   a[m] = 3;
-   a[m+1] = 1;
-   a[m+2] = 2;
-   //a[m+3] = 1;
+   a[m] = 1;
+   a[m+1] = 2;
+   a[m+2] = 5;
+
    /* The elements of the third column */
    a[m*2] = 1;
-   a[m*2+1] = 0;
-   a[m*2+2] = 0;
-   //a[m*2+3] = 6;
+   a[m*2+1] = 3;
+   a[m*2+2] = 5;
+
    /* The elements of the fourth column */
-   a[m*3] = 0;
-   a[m*3+1] = 1;
+   a[m*3] = 1;
+   a[m*3+1] = 0;
    a[m*3+2] = 0;
-   //a[m*3+3] = 8;
 
-    /* The elements of the fifth column */
+
+   /* The elements of the fifth column */
    a[m*4] = 0;
-   a[m*4+1] = 0;
+   a[m*4+1] = 1;
    a[m*4+2] = 1;
-   //a[m*4+3] = 8;
 
-   /*a[m*5] = 0;
+
+   /* The elements of the sixth column */
+   a[m*5] = 0;
    a[m*5+1] = 0;
-   a[m*5+2] = 1;*/
-   //a[m*5+3] = 8;
+   a[m*5+2] = 1;
 
-   //a[m*6] = 0;
-   //a[m*6+1] = 10;
-   //a[m*6+2] = 15;
-   //a[m*6+3] = 8;
+   printMatrix(a, m, n, b, c, z, "input matrix",-1,-1);
 
-
-   printf("\nBefore:\n");
-   printMatrix(m, n, a, b, c, zb);
-
-
-   int e = 1;
-   int l = 1;
-
-   int iter  = 1;
-   if (argc == 1)
+   int iter = 0;
+   while (iter < 50)
    {
-       iter = 1;
-   }
-   else
-   {
-       iter  = atoi(argv[1]);
-   }
-   while (iter-- > 0 && foundOptimal == 0)
-   {
-       printf("\nIteration = %d\n\n",iteration++);
-       // Find entering variable
-       e = getMaxCol2(c, 1, n, 1);   // e col index
+       int e = findEnteringVariable3(a, m, n, c);
 
-       printf("entering column (e) = %d\t", e);
-
-       // Find leaving variable
-       l = getMinRow2(a, m, n, e, b);  // l row index
-
-       printf("leaving row (l) = %d\t", l);
-
-       printf ("pivot value = %f\n", a[getIndex(m,n,l,e)]);
-
-       if (l < 0)
+       if (e == -1)
        {
-           printf ("\nUnbounded!\n");
-           exit(0);
+            printMatrix(a, m, n, b, c, z, "solution matrix", -1, -1);
+            exit(0);
        }
+       int l = -1;
 
-       // t = min ratio of all rows in col e (which is l) from getMinRow
-       double t = b[l] / a[getIndex(m,n, l, e)];
-       printf("t = %f\n", t);
+       findLeavingVariable(b, a, m ,n, e, &l, &t);
+       printMatrix(a, m, n, b, c, z, "pivot found", l, e);
 
-       int temp = 0;
+       eliminate(a, m, n, e, l, b, c, &z);
 
-       // pivoting
-       double *d =  (double *)malloc(sizeof(double)*m);
-       for (temp = 0; temp < m; temp++)
-       {
-           d[temp] = a[getIndex(m, n, 1 + temp, e)];
-       }
-       d[e-1] = a[getIndex(m,n,l,e)] - 1;
+       iter++;
+    }
 
-       double *r = (double *)malloc(sizeof(double)*(n-IdentityMatrixOffSet));
-       for (temp = IdentityMatrixOffSet; temp < n; temp++)
-       {
-           r[temp-IdentityMatrixOffSet] = a[getIndex(m, n, l, temp+1)];
-       }
-
-       // Xe <-- Xe + t
-       c[e] += t;
-       printf("\nXe (c[e]) = %f\t", c[e]);
-
-       //zb -= (t * c[e]);
-       //printf("Xb (zb) = %f\n", zb);
-       for (temp = IdentityMatrixOffSet; temp < n; temp++)
-       {
-           a[getIndex(m, n, m, temp+1)] -= (t * c[e]);
-       }
-
-
-       alpha = 1.0/a[getIndex(m,n,l,e)];
-
-       printf("\nd:\n");
-       printArray(1, m, d);
-       printf("\nr:\n");
-       printArray(1, n-IdentityMatrixOffSet, r);
-
-       printf("\nAlpha = %f\n", alpha);
-
-       cblas_dger(order, m, n, alpha, d, incx, r, incy, a, m);
-
-       alpha *= -c[l];
-       printf("Alpha = %f\n", alpha);
-
-       //cblas_daxpy(2, alpha, r, incx, &(a[getIndex(m,n,1,n)]), incy);
-       cblas_daxpy(2, alpha, r, incx, c, incy);
-
-       //printf("\nIteration %d:\n", iter);
-       double tempE = c[l];
-       c[l] = c[e];
-       c[e] = tempE;
-
-       printMatrix(m,n,a,b,c,zb);
-   }
-
-   if (foundOptimal == 1)
-   {
-        printf("\n****Optimal found!\n");
-   }
-
-   //free(a);
-   //free(x);
-   //free(y);
+   free(a);
+   free(b);
+   free(c);
    return 1;
 }
