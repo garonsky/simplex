@@ -4,6 +4,7 @@
 #include "assert.h"
 #include "string.h"
 #include "math.h"
+#include "simplex.h"
 
 #define _VERBOSE_    1
 
@@ -167,8 +168,8 @@ void eliminate(double *a, int m, int n, int e, int l, double *b, double *c, doub
 #ifdef _VERBOSE_
         printf("\nZeroing row: %d on col: %d\n",idx, e);
         printMatrix(a, m, n, b, c, *z, "zeroing columns", l, e);
-        printMatrix(A, m, n, 0, 0, *z, "dgemm A");
-        printMatrix(B, n, m, 0, 0, *z, "dgemm B");
+        printMatrix(A, m, n, 0, 0, *z, "dgemm A", -1, -1);
+        printMatrix(B, n, m, 0, 0, *z, "dgemm B", -1, -1);
 #endif
     }
 
@@ -300,88 +301,6 @@ int findEnteringVariable(const double *a, int m, int n, const double *c)
     assert(a);
     assert(m > 0 && n > 0);
 
-    double max = -1.0;
-    double ratio = 0;
-    int first = 1;
-    int e = -1;
-    int j = 1;
-
-    for (j = 1; j <= n; j++)  // loop through columns and find largest ratio of the c/norm
-    {
-        double Cj = c[j-1];
-
-        double Gj = calcEuclideanDistance(a, m, n, j);  // line #2
-
-        //printf("euclidean distance for col:%d is: %f\n", j, Gj);
-
-        Gj *= Gj; // line #2
-
-        // argmax
-        ratio = c[j-1] / sqrtf(Gj); // line #3
-        //printf("Ratio of {c[%d] = %f} (%f)/(%f) = %f\n",j, c[j-1], c[j-1], sqrtf(Gj), ratio);
-        if (ratio >= max || first == 1)   // line #3
-        {
-            max = c[j-1]/sqrtf(Gj);
-            e = j;  // e stores the column index
-            first = 0;
-        }
-    }
-
-    if (max > 0)
-    {
-        printf ("\n***Optimal Found!\n\n");  // line #5
-        return -1;
-    }
-
-    printf ("Entering column = %d\n",e);
-    return e;  // // line #3
-}
-
-
-int findEnteringVariable2(const double *a, int m, int n, const double *c)
-{
-    assert(a);
-    assert(m > 0 && n > 0);
-
-    double max = -1.0;
-    double ratio = 0;
-    int allpos = 1;
-    int first = 1;
-    int e = -1;
-    int j = 1;
-
-    for (j = 1; j <= n; j++)  // loop through columns and find largest ratio of the c/norm
-    {
-        if (c[j-1] < 0)
-        {
-            allpos = -1;
-        }
-        ratio = abs(c[j-1]);
-        if (ratio >= max || first == 1)   // line #3
-        {
-            max = abs(ratio);
-            e = j;  // e stores the column index
-            first = 0;
-        }
-    }
-
-    if (allpos > 0)
-    {
-        printf ("\n***Optimal Found!\n\n");  // line #5
-        exit(0);
-    }
-
-#ifdef _VERBOSE_
-    printf ("Entering column = %d\n",e);
-#endif
-    return e;  // // line #3
-}
-
-int findEnteringVariable3(const double *a, int m, int n, const double *c)
-{
-    assert(a);
-    assert(m > 0 && n > 0);
-
     double min = -1.0;
     double ratio = 0;
     int allpos = 1;
@@ -498,9 +417,10 @@ int main ( )
    order = CblasColMajor;
    transa = CblasNoTrans;
 
+
    m = 3; /* Size of Column ( the number of rows ) */
-   n = 6; /* Size of Row ( the number of columns ) */
-   lda = 3; /* Leading dimension of 5 * 4 matrix is 5 */
+   n = 7; /* Size of Row ( the number of columns ) */
+   lda = 4; /* Leading dimension of 5 * 4 matrix is 5 */
 
    incx = 1;
    incy = 1;
@@ -511,55 +431,63 @@ int main ( )
    b = (double *)malloc(sizeof(double)*n);
    c = (double *)malloc(sizeof(double)*(n+m));
 
-   b[0] = 14;
-   b[1] = 28;
-   b[2] = 30;
+   b[0] = 12;
+   b[1] = 7;
+   b[2] = 10;
 
-   c[0] = -1;
-   c[1] = -2;
-   c[2] = 1;
-   c[3] = 0;
+   c[0] = -2;
+   c[1] = -4;
+   c[2] = -3;
+   c[3] = -1;
    c[4] = 0;
    c[5] = 0;
+   c[6] = 0;
 
    /* The elements of the first column */
-   a[0] = 2;
-   a[1] = 4;
+   a[0] = 3;
+   a[1] = 1;
    a[2] = 2;
 
    /* The elements of the second column */
-   a[m] = 1;
-   a[m+1] = 2;
-   a[m+2] = 5;
+   a[m]   = 1;
+   a[m+1] = -3;
+   a[m+2] = 1;
 
    /* The elements of the third column */
-   a[m*2] = 1;
-   a[m*2+1] = 3;
-   a[m*2+2] = 5;
+   a[m*2]   = 1;
+   a[m*2+1] = 2;
+   a[m*2+2] = 3;
 
    /* The elements of the fourth column */
-   a[m*3] = 1;
-   a[m*3+1] = 0;
-   a[m*3+2] = 0;
+   a[m*3]   = 4;
+   a[m*3+1] = 3;
+   a[m*3+2] = -1;
 
 
    /* The elements of the fifth column */
-   a[m*4] = 0;
-   a[m*4+1] = 1;
-   a[m*4+2] = 1;
+   a[m*4]   = 1;
+   a[m*4+1] = 0;
+   a[m*4+2] = 0;
 
 
    /* The elements of the sixth column */
-   a[m*5] = 0;
-   a[m*5+1] = 0;
-   a[m*5+2] = 1;
+   a[m*5]   = 0;
+   a[m*5+1] = 1;
+   a[m*5+2] = 0;
+
+   /* The elements of the sixth column */
+   a[m*6]   = 0;
+   a[m*6+1] = 0;
+   a[m*6+2] = 1;
+
+   //optimal:
 
    printMatrix(a, m, n, b, c, z, "input matrix",-1,-1);
 
    int iter = 0;
    while (iter < 50)
    {
-       int e = findEnteringVariable3(a, m, n, c);
+       int e = findEnteringVariable(a, m, n, c);
 
        if (e == -1)
        {
